@@ -1,0 +1,6 @@
+{
+  "name": "VerbCraft",
+  "description": "Advanced English verb complement exam trainer covering gerunds, infinitives, causatives, and meaning-shifting verbs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
