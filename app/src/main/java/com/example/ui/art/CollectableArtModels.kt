@@ -1,6 +1,9 @@
 package com.example.ui.art
 
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import com.example.R
 
 enum class CollectableShape {
     // Food dishes
@@ -83,3 +86,29 @@ data class CollectableArtSpec(
     val pattern: ArtPattern = ArtPattern.NONE,
     val badge: String = "",
 )
+
+internal fun Color.lighten(fraction: Float): Color = lerp(this, Color.White, fraction.coerceIn(0f, 1f))
+
+internal fun Color.darken(fraction: Float): Color = lerp(this, Color(0xFF0E1014), fraction.coerceIn(0f, 1f))
+
+/**
+ * 1-to-1 photorealistic studio PNG drawables strictly matched to their exact collectable IDs.
+ * Every other collectable uses the custom studio-shaded procedural renderer with its own unique spec.
+ */
+internal val exactHeroDrawableById: Map<String, Int> = mapOf(
+    "neapolitan_pizza" to R.drawable.img_prize_pizza,
+    "tonkotsu_ramen" to R.drawable.img_prize_ramen,
+    "double_smash_burger" to R.drawable.img_prize_burger,
+    "wagyu_steak" to R.drawable.img_prize_wagyu,
+    "harley_fatboy" to R.drawable.img_prize_harley_fatboy,
+    "yamaha_r1" to R.drawable.img_prize_yamaha_r1,
+    "ducati_panigale_v4" to R.drawable.img_prize_ducati_v4,
+    "kawasaki_ninja_h2r" to R.drawable.img_prize_kawasaki_h2r,
+    "bmw_m3_comp" to R.drawable.img_prize_bmw_m3,
+    "porsche_911_gt3" to R.drawable.img_prize_porsche_gt3,
+    "lambo_huracan" to R.drawable.img_prize_lambo_huracan,
+    "ferrari_f40" to R.drawable.img_prize_ferrari_f40,
+)
+
+@DrawableRes
+internal fun exactHeroDrawableFor(prizeId: String): Int? = exactHeroDrawableById[prizeId]
