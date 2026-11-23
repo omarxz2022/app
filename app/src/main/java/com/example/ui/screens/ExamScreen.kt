@@ -163,13 +163,17 @@ fun ExamScreen(
                 }
 
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    color = if (uiState.isFixingExamSession) semantic.wrongContainer else MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(999.dp),
                 ) {
                     Text(
-                        text = "Q ${uiState.currentIndex + 1} / $totalCount",
+                        text = if (uiState.isFixingExamSession) {
+                            "Fixing • Q ${uiState.currentIndex + 1} / $totalCount"
+                        } else {
+                            "Q ${uiState.currentIndex + 1} / $totalCount"
+                        },
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (uiState.isFixingExamSession) semantic.onWrongContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }

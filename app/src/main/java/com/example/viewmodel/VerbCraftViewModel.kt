@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -39,9 +40,10 @@ sealed interface DataState<out T> {
 data class VerbCraftUiState(
     val activeTab: MainTab = MainTab.EXAM,
     val examPhase: ExamPhase = ExamPhase.HOME,
-    val selectedSuite: ExamSuite = ExamSuite.IF_MIXED,
+    val selectedSuite: ExamSuite = ExamSuite.VERBS_EXPRESSIONS,
     val selectedCategory: ExamCategory = ExamCategory.ALL,
     val selectedLength: ExamLength = ExamLength.TWENTY,
+    val isFixingExamSession: Boolean = false,
     val examQuestions: List<VerbQuestion> = emptyList(),
     val currentIndex: Int = 0,
     val selectedOptionIndex: Int? = null,
@@ -57,6 +59,9 @@ data class VerbCraftUiState(
     val codexQuery: String = "",
     val selectedCodexGroup: VerbPatternGroup? = null,
     val selectedPrizeCategory: PrizeCategory? = null,
+    val prizeSearchQuery: String = "",
+    val prizeAffordableOnly: Boolean = false,
+    val fastingMode: Boolean = false,
     val purchasingPrizeId: String? = null,
     val isSavingProfile: Boolean = false,
     val statusBannerMessage: String? = null,
@@ -127,9 +132,33 @@ class VerbCraftViewModel(
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DataState.Loading)
 
+    val wrongQuestionIdsState: StateFlow<List<Int>> =
+        repository.observeWrongQuestionIds(currentUserId)
+            .catch { e ->
+                if (e is CancellationException) throw e
+                emit(emptyList())
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private var hasUserToggledFasting = false
+
     init {
         viewModelScope.launch {
             repository.ensureProfileExists(currentUserId, defaultDisplayName)
+            val savedProfile = repository.observeUserProfile(currentUserId).firstOrNull { it != null }
+            if (savedProfile != null && !hasUserToggledFasting) {
+                _uiState.update { state ->
+                    val nextCategory = if (savedProfile.fastingMode && state.selectedPrizeCategory == PrizeCategory.FOOD) {
+                        null
+                    } else {
+                        state.selectedPrizeCategory
+                    }
+                    state.copy(
+                        fastingMode = savedProfile.fastingMode,
+                        selectedPrizeCategory = nextCategory,
+                    )
+                }
+            }
         }
     }
 
@@ -146,7 +175,7 @@ class VerbCraftViewModel(
                 ExamCategory.ALL
             }
             val available = VerbQuestionRepository.countForSuite(suite, nextCategory)
-            val nextLength = if (state.selectedLength == ExamLength.TWENTY && available < 20) {
+            val nextLength = if (suite != ExamSuite.FIXING && state.selectedLength == ExamLength.TWENTY && available < 20) {
                 ExamLength.ALL
             } else {
                 state.selectedLength
@@ -155,6 +184,7 @@ class VerbCraftViewModel(
                 selectedSuite = suite,
                 selectedCategory = nextCategory,
                 selectedLength = nextLength,
+                statusBannerMessage = null,
             )
         }
     }
@@ -177,6 +207,10 @@ class VerbCraftViewModel(
 
     fun startExam() {
         val state = _uiState.value
+        if (state.selectedSuite == ExamSuite.FIXING) {
+            startFixingExam()
+            return
+        }
         val available = VerbQuestionRepository.countForSuite(state.selectedSuite, state.selectedCategory)
         val count = if (state.selectedLength == ExamLength.ALL) {
             if (state.selectedSuite == ExamSuite.VERBS) available else 100
@@ -188,10 +222,36 @@ class VerbCraftViewModel(
             category = state.selectedCategory,
             count = count,
         )
+        launchQuestionsSession(questions = questions, isFixingSession = false)
+    }
+
+    fun startFixingExam() {
+        val ids = wrongQuestionIdsState.value
+        val questions = VerbQuestionRepository.getQuestionsByIds(ids).shuffled()
+        if (questions.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    statusBannerMessage = "You have 0 wrong questions right now. Complete any exam first!",
+                    statusBannerIsError = false,
+                )
+            }
+            return
+        }
+        launchQuestionsSession(questions = questions, isFixingSession = true)
+    }
+
+    fun retryMissedQuestions() {
+        val missed = _uiState.value.missedQuestions.map { it.question }.shuffled()
+        if (missed.isEmpty()) return
+        launchQuestionsSession(questions = missed, isFixingSession = true)
+    }
+
+    private fun launchQuestionsSession(questions: List<VerbQuestion>, isFixingSession: Boolean) {
         _uiState.update {
             it.copy(
                 activeTab = MainTab.EXAM,
                 examPhase = ExamPhase.ACTIVE,
+                isFixingExamSession = isFixingSession,
                 examQuestions = questions,
                 currentIndex = 0,
                 selectedOptionIndex = null,
@@ -204,27 +264,6 @@ class VerbCraftViewModel(
                 lastCoinDelta = 0,
                 showExitConfirmDialog = false,
                 statusBannerMessage = null,
-            )
-        }
-    }
-
-    fun retryMissedQuestions() {
-        val missed = _uiState.value.missedQuestions.map { it.question }.shuffled()
-        if (missed.isEmpty()) return
-        _uiState.update {
-            it.copy(
-                examPhase = ExamPhase.ACTIVE,
-                examQuestions = missed,
-                currentIndex = 0,
-                selectedOptionIndex = null,
-                rewriteInput = "",
-                rewriteSubmitted = false,
-                answeredQuestions = emptyList(),
-                currentStreak = 0,
-                bestStreakInSession = 0,
-                sessionCoinsEarned = 0,
-                lastCoinDelta = 0,
-                showExitConfirmDialog = false,
             )
         }
     }
@@ -254,6 +293,7 @@ class VerbCraftViewModel(
         viewModelScope.launch {
             repository.recordAnswer(
                 userId = currentUserId,
+                questionId = question.id,
                 isCorrect = isCorrect,
                 isRewrite = false,
             )
@@ -295,6 +335,7 @@ class VerbCraftViewModel(
         viewModelScope.launch {
             repository.recordAnswer(
                 userId = currentUserId,
+                questionId = question.id,
                 isCorrect = isCorrect,
                 isRewrite = true,
             )
@@ -359,6 +400,34 @@ class VerbCraftViewModel(
         }
     }
 
+    fun updatePrizeSearchQuery(query: String) {
+        _uiState.update { it.copy(prizeSearchQuery = query) }
+    }
+
+    fun togglePrizeAffordableOnly() {
+        _uiState.update { it.copy(prizeAffordableOnly = !it.prizeAffordableOnly) }
+    }
+
+    fun toggleFastingMode() {
+        hasUserToggledFasting = true
+        var nextEnabled = false
+        _uiState.update { state ->
+            nextEnabled = !state.fastingMode
+            val nextCategory = if (nextEnabled && state.selectedPrizeCategory == PrizeCategory.FOOD) {
+                null
+            } else {
+                state.selectedPrizeCategory
+            }
+            state.copy(
+                fastingMode = nextEnabled,
+                selectedPrizeCategory = nextCategory,
+            )
+        }
+        viewModelScope.launch {
+            repository.setFastingMode(currentUserId, nextEnabled)
+        }
+    }
+
     fun purchasePrize(prize: PrizeItem) {
         viewModelScope.launch {
             _uiState.update { it.copy(purchasingPrizeId = prize.id, statusBannerMessage = null) }
@@ -397,6 +466,7 @@ class VerbCraftViewModel(
         _uiState.update {
             it.copy(
                 examPhase = ExamPhase.HOME,
+                isFixingExamSession = false,
                 selectedOptionIndex = null,
                 rewriteInput = "",
                 rewriteSubmitted = false,
@@ -409,6 +479,7 @@ class VerbCraftViewModel(
         _uiState.update {
             it.copy(
                 examPhase = ExamPhase.HOME,
+                isFixingExamSession = false,
                 selectedOptionIndex = null,
                 rewriteInput = "",
                 rewriteSubmitted = false,

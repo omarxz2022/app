@@ -118,5 +118,21 @@ object VerbCodexData {
         VerbCodexEntry("let", VerbPatternGroup.CAUSATIVE_BARE, "let + O + V (no passive *be let*)", "Use 'be allowed/permitted to V' for passive.", "Let them publish; they aren't allowed to."),
         VerbCodexEntry("get (someone) to", VerbPatternGroup.CAUSATIVE_BARE, "get O + to V / get O + V3 (passive) / V-ing", "Persuade agent -> 'to V'; service on object -> 'V3'.", "Get him to fix it / Get it fixed."),
         VerbCodexEntry("help", VerbPatternGroup.CAUSATIVE_BARE, "help + (O) + (to) + V", "Accepts either bare infinitive or to-infinitive.", "She helped us (to) simplify it."),
+        VerbCodexEntry("had better / would rather", VerbPatternGroup.CAUSATIVE_BARE, "had better / would rather + bare V", "Fixed modal idioms that strictly drop 'to' and take bare infinitive.", "You'd better verify it now."),
+
+        // Fixed Expressions & Preposition 'to' Traps
+        VerbCodexEntry("look forward to", VerbPatternGroup.PREPOSITION_TO, "look forward to + (poss.) + V-ing", "'to' is a preposition, NEVER infinitive.", "We look forward to hearing from you."),
+        VerbCodexEntry("object to", VerbPatternGroup.PREPOSITION_TO, "object to + (being) + V-ing", "'to' is a preposition; passive is 'object to being V3'.", "He objected to being overruled."),
+        VerbCodexEntry("resort to", VerbPatternGroup.PREPOSITION_TO, "resort to + V-ing", "Turn to a drastic option; 'to' governs a gerund.", "They resorted to rationing water."),
+        VerbCodexEntry("with a view to", VerbPatternGroup.PREPOSITION_TO, "with a view to + V-ing", "Compare 'in order to V' vs 'with a view to V-ing'.", "Rebuilt with a view to doubling yield."),
+        VerbCodexEntry("be committed / dedicated to", VerbPatternGroup.PREPOSITION_TO, "be committed/devoted to + V-ing", "Unlike 'determined to V', 'committed to' takes a gerund.", "She is committed to cutting waste."),
+        VerbCodexEntry("get round to", VerbPatternGroup.PREPOSITION_TO, "get (a)round to + V-ing", "Finally find time for something; 'to' is a preposition.", "I never got round to replying."),
+        VerbCodexEntry("confess to", VerbPatternGroup.PREPOSITION_TO, "confess to + (having) + V-ing", "Takes preposition 'to' + gerund/perfect gerund.", "He confessed to having erased it."),
+        VerbCodexEntry("it's no use / no good", VerbPatternGroup.GERUND, "it's no use / no good + V-ing", "Fixed expression taking a gerund.", "It's no use arguing after the vote."),
+        VerbCodexEntry("there's no point (in)", VerbPatternGroup.GERUND, "there's no point (in) + V-ing", "Formal futility expression taking a gerund.", "There's no point in delaying further."),
+        VerbCodexEntry("can't help", VerbPatternGroup.GERUND, "can't help + V-ing (or can't help but + V)", "Unable to stop oneself; never *can't help to V* here.", "She couldn't help noticing the flaw."),
+        VerbCodexEntry("on the verge / point of", VerbPatternGroup.GERUND, "be on the verge/point of + V-ing", "Contrast 'be about to V' vs 'on the verge of V-ing'.", "He was on the verge of resigning."),
+        VerbCodexEntry("be worth", VerbPatternGroup.GERUND, "be worth + V-ing (passive sense)", "Active gerund with passive meaning; never *worth to V*.", "This clause is worth memorizing."),
+        VerbCodexEntry("mean", VerbPatternGroup.MEANING_SHIFT, "mean + V-ing (entail) vs. mean + to V (intend)", "Consequence vs. intention.", "Leading means working late."),
     )
 }

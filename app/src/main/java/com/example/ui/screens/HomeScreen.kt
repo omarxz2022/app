@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,8 +27,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.NoFood
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.MonetizationOn
+import androidx.compose.material.icons.outlined.NoFood
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
@@ -67,6 +71,7 @@ import java.util.Locale
 fun HomeScreen(
     uiState: VerbCraftUiState,
     profile: UserProfile?,
+    wrongQuestionCount: Int,
     onSelectSuite: (ExamSuite) -> Unit,
     onSelectCategory: (ExamCategory) -> Unit,
     onSelectLength: (ExamLength) -> Unit,
@@ -74,6 +79,7 @@ fun HomeScreen(
     onOpenCodex: () -> Unit,
     onOpenRating: () -> Unit,
     onOpenPrizes: () -> Unit,
+    onToggleFastingMode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val semantic = LocalSemanticColors.current
@@ -90,7 +96,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .widthIn(max = 680.dp),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 92.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Top Status Strip: Coins, Rating, and Verb Codex
@@ -269,6 +275,11 @@ fun HomeScreen(
                     )
                     ExamSuite.entries.forEach { suite ->
                         val isSelected = uiState.selectedSuite == suite
+                        val badgeText = if (suite == ExamSuite.FIXING) {
+                            "$wrongQuestionCount to fix"
+                        } else {
+                            suite.badge
+                        }
                         Card(
                             shape = MaterialTheme.shapes.medium,
                             colors = CardDefaults.cardColors(
@@ -315,13 +326,21 @@ fun HomeScreen(
                                             color = MaterialTheme.colorScheme.onSurface,
                                         )
                                         Surface(
-                                            color = semantic.brassContainer,
+                                            color = if (suite == ExamSuite.FIXING && wrongQuestionCount > 0) {
+                                                semantic.wrongContainer
+                                            } else {
+                                                semantic.brassContainer
+                                            },
                                             shape = RoundedCornerShape(6.dp),
                                         ) {
                                             Text(
-                                                text = suite.badge,
+                                                text = badgeText,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = semantic.onBrassContainer,
+                                                color = if (suite == ExamSuite.FIXING && wrongQuestionCount > 0) {
+                                                    semantic.onWrongContainer
+                                                } else {
+                                                    semantic.onBrassContainer
+                                                },
                                                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
                                             )
                                         }
@@ -347,67 +366,66 @@ fun HomeScreen(
                 }
             }
 
-            // Category Filter Chips within Suite
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Topic Focus",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            if (uiState.selectedSuite == ExamSuite.FIXING) {
+                item {
+                    Card(
+                        shape = MaterialTheme.shapes.medium,
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (wrongQuestionCount > 0) {
+                                semantic.brassContainer.copy(alpha = 0.5f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        items(uiState.availableCategories) { category ->
-                            val isSelected = uiState.selectedCategory == category
-                            val catCount = VerbQuestionRepository.countForSuite(uiState.selectedSuite, category)
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { onSelectCategory(category) },
-                                label = {
-                                    Text(
-                                        text = "${category.shortTitle} ($catCount)",
-                                        style = MaterialTheme.typography.labelLarge,
-                                    )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = if (wrongQuestionCount > 0) {
+                                    "$wrongQuestionCount wrong question${if (wrongQuestionCount == 1) "" else "s"} ready in one exam"
+                                } else {
+                                    "Your Fixing Exam queue is clear"
                                 },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                ),
-                                modifier = Modifier
-                                    .minimumInteractiveComponentSize()
-                                    .testTag("category_chip_${category.name.lowercase()}"),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = if (wrongQuestionCount > 0) {
+                                    "Includes every question you got wrong across exams, shown one by one. Answering one right removes it from this list."
+                                } else {
+                                    "Whenever you miss a question in any exam, it is automatically added here so you can fix all mistakes in one session."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
                 }
-            }
-
-            // Exam Length
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Questions Per Session",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(ExamLength.entries) { length ->
-                            val isSelected = uiState.selectedLength == length
-                            val sessionCount = if (length == ExamLength.ALL) {
-                                minOf(100, availableCount)
-                            } else {
-                                minOf(length.count, availableCount)
-                            }
-                            if (length != ExamLength.TWENTY || availableCount >= 12) {
+            } else {
+                // Category Filter Chips within Suite
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Topic Focus",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(uiState.availableCategories) { category ->
+                                val isSelected = uiState.selectedCategory == category
+                                val catCount = VerbQuestionRepository.countForSuite(uiState.selectedSuite, category)
                                 FilterChip(
                                     selected = isSelected,
-                                    onClick = { onSelectLength(length) },
+                                    onClick = { onSelectCategory(category) },
                                     label = {
                                         Text(
-                                            text = "$sessionCount Qs",
+                                            text = "${category.shortTitle} ($catCount)",
                                             style = MaterialTheme.typography.labelLarge,
                                         )
                                     },
@@ -417,8 +435,50 @@ fun HomeScreen(
                                     ),
                                     modifier = Modifier
                                         .minimumInteractiveComponentSize()
-                                        .testTag("length_chip_${length.name.lowercase()}"),
+                                        .testTag("category_chip_${category.name.lowercase()}"),
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // Exam Length
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Questions Per Session",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(ExamLength.entries) { length ->
+                                val isSelected = uiState.selectedLength == length
+                                val sessionCount = if (length == ExamLength.ALL) {
+                                    minOf(100, availableCount)
+                                } else {
+                                    minOf(length.count, availableCount)
+                                }
+                                if (length != ExamLength.TWENTY || availableCount >= 12) {
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = { onSelectLength(length) },
+                                        label = {
+                                            Text(
+                                                text = "$sessionCount Qs",
+                                                style = MaterialTheme.typography.labelLarge,
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                        ),
+                                        modifier = Modifier
+                                            .minimumInteractiveComponentSize()
+                                            .testTag("length_chip_${length.name.lowercase()}"),
+                                    )
+                                }
                             }
                         }
                     }
@@ -427,8 +487,19 @@ fun HomeScreen(
 
             // Start CTA
             item {
+                val isFixingMode = uiState.selectedSuite == ExamSuite.FIXING
+                val canStart = !isFixingMode || wrongQuestionCount > 0
+                val ctaLabel = when {
+                    isFixingMode && wrongQuestionCount > 0 ->
+                        "Start Fixing Exam ($wrongQuestionCount Qs)"
+                    isFixingMode ->
+                        "No Wrong Questions Yet"
+                    else ->
+                        stringResource(R.string.start_exam)
+                }
                 Button(
                     onClick = onStartExam,
+                    enabled = canStart,
                     shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -446,7 +517,7 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = stringResource(R.string.start_exam),
+                        text = ctaLabel,
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -457,6 +528,75 @@ fun HomeScreen(
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+
+        val fastingContainerColor = animateColorAsState(
+            targetValue = if (uiState.fastingMode) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+            label = "fasting_container_color",
+        )
+        val fastingContentColor = animateColorAsState(
+            targetValue = if (uiState.fastingMode) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            label = "fasting_content_color",
+        )
+
+        Surface(
+            color = fastingContainerColor.value,
+            contentColor = fastingContentColor.value,
+            shape = RoundedCornerShape(999.dp),
+            tonalElevation = 4.dp,
+            shadowElevation = 6.dp,
+            border = BorderStroke(
+                width = 1.dp,
+                color = if (uiState.fastingMode) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant
+                },
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 18.dp, bottom = 16.dp)
+                .heightIn(min = 48.dp)
+                .minimumInteractiveComponentSize()
+                .clip(RoundedCornerShape(999.dp))
+                .clickable(
+                    onClickLabel = if (uiState.fastingMode) {
+                        "Turn off fasting mode and show food items"
+                    } else {
+                        "Turn on fasting mode and hide all food"
+                    },
+                    onClick = onToggleFastingMode,
+                )
+                .testTag("fasting_mode_button"),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = if (uiState.fastingMode) Icons.Filled.NoFood else Icons.Outlined.NoFood,
+                    contentDescription = if (uiState.fastingMode) {
+                        "Fasting mode active, food hidden"
+                    } else {
+                        "Fasting mode off"
+                    },
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = if (uiState.fastingMode) "Fasting: ON" else "Fasting",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }

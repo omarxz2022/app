@@ -94,6 +94,7 @@ fun VerbCraftApp(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val profileState by viewModel.profileState.collectAsStateWithLifecycle()
     val collectionState by viewModel.collectionState.collectAsStateWithLifecycle()
+    val wrongQuestionIds by viewModel.wrongQuestionIdsState.collectAsStateWithLifecycle()
 
     val currentProfile = (profileState as? DataState.Success)?.data
     val showBottomBar = uiState.examPhase == ExamPhase.HOME
@@ -143,7 +144,9 @@ fun VerbCraftApp(
             ) { innerPadding ->
                 ResultsScreen(
                     uiState = uiState,
+                    wrongQuestionCount = wrongQuestionIds.size,
                     onRetryMissed = viewModel::retryMissedQuestions,
+                    onStartFixingExam = viewModel::startFixingExam,
                     onNewExam = viewModel::startExam,
                     onBackHome = viewModel::returnHomeFromResults,
                     modifier = Modifier.padding(innerPadding),
@@ -223,6 +226,7 @@ fun VerbCraftApp(
                         MainTab.EXAM -> HomeScreen(
                             uiState = uiState,
                             profile = currentProfile,
+                            wrongQuestionCount = wrongQuestionIds.size,
                             onSelectSuite = viewModel::selectSuite,
                             onSelectCategory = viewModel::selectCategory,
                             onSelectLength = viewModel::selectLength,
@@ -230,6 +234,7 @@ fun VerbCraftApp(
                             onOpenCodex = viewModel::openCodex,
                             onOpenRating = { viewModel.selectTab(MainTab.RATING) },
                             onOpenPrizes = { viewModel.selectTab(MainTab.PRIZES) },
+                            onToggleFastingMode = viewModel::toggleFastingMode,
                         )
 
                         MainTab.RATING -> RatingScreen(
@@ -243,11 +248,14 @@ fun VerbCraftApp(
                             profileState = profileState,
                             collectionState = collectionState,
                             onSelectCategory = viewModel::selectPrizeCategory,
+                            onSearchQueryChange = viewModel::updatePrizeSearchQuery,
+                            onToggleAffordableOnly = viewModel::togglePrizeAffordableOnly,
                             onBuyPrize = viewModel::purchasePrize,
                         )
 
                         MainTab.COLLECTION -> CollectionScreen(
                             collectionState = collectionState,
+                            fastingMode = uiState.fastingMode,
                             onOpenPrizeMenu = { viewModel.selectTab(MainTab.PRIZES) },
                         )
                     }

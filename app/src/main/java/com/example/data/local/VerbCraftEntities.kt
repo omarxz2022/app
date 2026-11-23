@@ -15,6 +15,7 @@ data class UserProfileEntity(
     val totalCorrect: Long = 0L,
     val choiceCorrect: Long = 0L,
     val rewriteCorrect: Long = 0L,
+    val fastingMode: Boolean = false,
 ) {
     fun toDomain(): UserProfile = UserProfile(
         id = id,
@@ -26,6 +27,7 @@ data class UserProfileEntity(
         totalCorrect = totalCorrect,
         choiceCorrect = choiceCorrect,
         rewriteCorrect = rewriteCorrect,
+        fastingMode = fastingMode,
     )
 }
 
@@ -47,3 +49,11 @@ data class CollectableEntity(
         quantity = quantity,
     )
 }
+
+@Entity(tableName = "wrong_questions")
+data class WrongQuestionEntity(
+    @PrimaryKey val questionId: Int,
+    val wrongCount: Int = 1,
+    val updatedAt: Long = System.currentTimeMillis(),
+)
+

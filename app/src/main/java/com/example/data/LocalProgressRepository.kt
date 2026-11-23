@@ -13,9 +13,16 @@ import kotlinx.coroutines.flow.map
 interface ProgressStore {
     fun observeUserProfile(userId: String): Flow<UserProfile?>
     fun observeCollection(userId: String): Flow<List<CollectableItem>>
+    fun observeWrongQuestionIds(userId: String): Flow<List<Int>>
     suspend fun ensureProfileExists(userId: String, defaultName: String): Result<Unit>
     suspend fun updateProfile(userId: String, displayName: String, grade: String): Result<Unit>
-    suspend fun recordAnswer(userId: String, isCorrect: Boolean, isRewrite: Boolean): Result<Unit>
+    suspend fun setFastingMode(userId: String, enabled: Boolean): Result<Unit>
+    suspend fun recordAnswer(
+        userId: String,
+        questionId: Int,
+        isCorrect: Boolean,
+        isRewrite: Boolean,
+    ): Result<Unit>
     suspend fun purchasePrize(userId: String, prize: PrizeItem): Result<Unit>
 }
 
@@ -32,6 +39,9 @@ class LocalProgressRepository(
 
     override fun observeCollection(userId: String): Flow<List<CollectableItem>> =
         dao.observeCollection().map { list -> list.map { it.toDomain() } }
+
+    override fun observeWrongQuestionIds(userId: String): Flow<List<Int>> =
+        dao.observeWrongQuestionIds()
 
     override suspend fun ensureProfileExists(userId: String, defaultName: String): Result<Unit> {
         return try {
@@ -55,13 +65,29 @@ class LocalProgressRepository(
         }
     }
 
+    override suspend fun setFastingMode(userId: String, enabled: Boolean): Result<Unit> {
+        return try {
+            dao.setFastingModeTx(enabled)
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun recordAnswer(
         userId: String,
+        questionId: Int,
         isCorrect: Boolean,
         isRewrite: Boolean,
     ): Result<Unit> {
         return try {
-            dao.recordAnswerTx(isCorrect = isCorrect, isRewrite = isRewrite)
+            dao.recordAnswerTx(
+                questionId = questionId,
+                isCorrect = isCorrect,
+                isRewrite = isRewrite,
+            )
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e

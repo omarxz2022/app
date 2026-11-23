@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.NoFood
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.MonetizationOn
 import androidx.compose.material.icons.outlined.ShoppingBag
@@ -43,12 +44,14 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.PrizeCatalog
 import com.example.model.CollectableItem
+import com.example.model.PrizeCategory
 import com.example.ui.theme.LocalSemanticColors
 import com.example.viewmodel.DataState
 
 @Composable
 fun CollectionScreen(
     collectionState: DataState<List<CollectableItem>>,
+    fastingMode: Boolean,
     onOpenPrizeMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -87,7 +90,17 @@ fun CollectionScreen(
             }
 
             is DataState.Success -> {
-                val items = collectionState.data
+                val allItems = collectionState.data
+                val items = if (fastingMode) {
+                    allItems.filterNot { it.categoryEnum == PrizeCategory.FOOD }
+                } else {
+                    allItems
+                }
+                val catalogTotal = if (fastingMode) {
+                    PrizeCatalog.items.count { it.category != PrizeCategory.FOOD }
+                } else {
+                    PrizeCatalog.items.size
+                }
                 val totalOwned = items.sumOf { it.quantity }
                 val totalValue = items.sumOf { it.price * it.quantity }
 
@@ -99,11 +112,43 @@ fun CollectionScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     item {
-                        Text(
-                            text = stringResource(R.string.nav_collection),
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.nav_collection),
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                            if (fastingMode) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = RoundedCornerShape(999.dp),
+                                    modifier = Modifier.testTag("collection_fasting_pill"),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.NoFood,
+                                            contentDescription = "Fasting mode active",
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.size(15.dp),
+                                        )
+                                        Text(
+                                            text = "Food hidden",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     item {
@@ -132,7 +177,7 @@ fun CollectionScreen(
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     )
                                     Text(
-                                        text = "${items.size} of ${PrizeCatalog.items.size} unique editions unlocked",
+                                        text = "${items.size} of $catalogTotal unique editions unlocked",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
                                     )
@@ -197,7 +242,11 @@ fun CollectionScreen(
                                         color = MaterialTheme.colorScheme.onSurface,
                                     )
                                     Text(
-                                        text = "Answer 4-choice (+1 coin) and rewrite (+5 coins) questions, then collect cars, motorbikes & gourmet prizes!",
+                                        text = if (fastingMode) {
+                                            "Answer 4-choice (+1 coin) and rewrite (+5 coins) questions, then collect cars & motorbikes!"
+                                        } else {
+                                            "Answer 4-choice (+1 coin) and rewrite (+5 coins) questions, then collect cars, motorbikes & gourmet prizes!"
+                                        },
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

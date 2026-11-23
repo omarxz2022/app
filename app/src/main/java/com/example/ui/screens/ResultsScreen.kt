@@ -54,7 +54,9 @@ import com.example.viewmodel.VerbCraftUiState
 @Composable
 fun ResultsScreen(
     uiState: VerbCraftUiState,
+    wrongQuestionCount: Int,
     onRetryMissed: () -> Unit,
+    onStartFixingExam: () -> Unit,
     onNewExam: () -> Unit,
     onBackHome: () -> Unit,
     modifier: Modifier = Modifier,
@@ -175,6 +177,21 @@ fun ResultsScreen(
                                 text = "${stringResource(R.string.retry_missed)} (${missed.size})",
                                 style = MaterialTheme.typography.titleMedium,
                             )
+                        }
+                    }
+
+                    if (wrongQuestionCount > 0) {
+                        OutlinedButton(
+                            onClick = onStartFixingExam,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .testTag("results_fixing_exam_button"),
+                        ) {
+                            Icon(Icons.Outlined.Replay, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Open All-Time Fixing Exam ($wrongQuestionCount Qs)")
                         }
                     }
 

@@ -18,7 +18,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -49,10 +52,13 @@ class VerbQuestionBankTest {
     private class FakeProgressStore : ProgressStore {
         val profile = MutableStateFlow<UserProfile?>(null)
         val collection = MutableStateFlow<List<CollectableItem>>(emptyList())
+        val wrongIds = MutableStateFlow<List<Int>>(emptyList())
 
         override fun observeUserProfile(userId: String): Flow<UserProfile?> = profile
 
         override fun observeCollection(userId: String): Flow<List<CollectableItem>> = collection
+
+        override fun observeWrongQuestionIds(userId: String): Flow<List<Int>> = wrongIds
 
         override suspend fun ensureProfileExists(userId: String, defaultName: String): Result<Unit> {
             if (profile.value == null) {
@@ -67,7 +73,18 @@ class VerbQuestionBankTest {
             return Result.success(Unit)
         }
 
-        override suspend fun recordAnswer(userId: String, isCorrect: Boolean, isRewrite: Boolean): Result<Unit> {
+        override suspend fun setFastingMode(userId: String, enabled: Boolean): Result<Unit> {
+            val cur = profile.value ?: UserProfile(id = userId, userId = userId)
+            profile.value = cur.copy(fastingMode = enabled)
+            return Result.success(Unit)
+        }
+
+        override suspend fun recordAnswer(
+            userId: String,
+            questionId: Int,
+            isCorrect: Boolean,
+            isRewrite: Boolean,
+        ): Result<Unit> {
             val cur = profile.value ?: UserProfile(id = userId, userId = userId)
             val coinDelta = when {
                 !isCorrect -> 0L
@@ -81,6 +98,11 @@ class VerbQuestionBankTest {
                 choiceCorrect = cur.choiceCorrect + if (isCorrect && !isRewrite) 1L else 0L,
                 rewriteCorrect = cur.rewriteCorrect + if (isCorrect && isRewrite) 1L else 0L,
             )
+            wrongIds.value = if (isCorrect) {
+                wrongIds.value.filterNot { it == questionId }
+            } else {
+                (listOf(questionId) + wrongIds.value).distinct()
+            }
             return Result.success(Unit)
         }
 
@@ -109,19 +131,22 @@ class VerbQuestionBankTest {
     }
 
     @Test
-    fun all2050QuestionsHaveValidUniqueStructure() {
+    fun all3050QuestionsHaveValidUniqueStructure() {
         val verbs = VerbQuestionRepository.verbQuestions
+        val verbExpr = VerbQuestionRepository.verbExpressionQuestions
         val condChoice = VerbQuestionRepository.conditionalChoiceQuestions
         val condRewrite = VerbQuestionRepository.conditionalRewriteQuestions
         val all = VerbQuestionRepository.allQuestions
 
         assertEquals(50, verbs.size)
+        assertEquals(1000, verbExpr.size)
+        assertEquals(1000, verbExpr.map { it.sentenceWithBlank }.toSet().size)
         assertEquals(1000, condChoice.size)
         assertEquals(1000, condRewrite.size)
-        assertEquals(2050, all.size)
-        assertEquals(2050, all.map { it.id }.toSet().size)
+        assertEquals(3050, all.size)
+        assertEquals(3050, all.map { it.id }.toSet().size)
 
-        (verbs + condChoice).forEach { q ->
+        (verbs + verbExpr + condChoice).forEach { q ->
             assertEquals(QuestionFormat.CHOICE, q.format)
             assertEquals(1, q.coinReward)
             assertEquals("Q${q.id} must have 4 options", 4, q.options.size)
@@ -155,11 +180,28 @@ class VerbQuestionBankTest {
     }
 
     @Test
-    fun prizeCatalogAndRatingMathWorkCorrectly() {
-        assertEquals(12, PrizeCatalog.items.size)
-        assertEquals(4, PrizeCatalog.items.count { it.category == PrizeCategory.CAR })
-        assertEquals(4, PrizeCatalog.items.count { it.category == PrizeCategory.MOTORBIKE })
-        assertEquals(4, PrizeCatalog.items.count { it.category == PrizeCategory.FOOD })
+    fun prizeCatalog312ItemsAllHaveUniqueCoinPricesAndValueOrder() {
+        val items = PrizeCatalog.items
+        assertEquals(312, items.size)
+        assertEquals(104, items.count { it.category == PrizeCategory.FOOD })
+        assertEquals(104, items.count { it.category == PrizeCategory.MOTORBIKE })
+        assertEquals(104, items.count { it.category == PrizeCategory.CAR })
+
+        assertEquals(312, items.map { it.id }.toSet().size)
+        assertEquals(312, items.map { it.title }.toSet().size)
+        assertEquals(312, items.map { it.price }.toSet().size)
+        assertTrue(items.all { it.price > 0 })
+
+        val maxFoodPrice = items.filter { it.category == PrizeCategory.FOOD }.maxOf { it.price }
+        val minBikePrice = items.filter { it.category == PrizeCategory.MOTORBIKE }.minOf { it.price }
+        val maxBikePrice = items.filter { it.category == PrizeCategory.MOTORBIKE }.maxOf { it.price }
+        val minCarPrice = items.filter { it.category == PrizeCategory.CAR }.minOf { it.price }
+        assertTrue(maxFoodPrice < minBikePrice)
+        assertTrue(maxBikePrice < minCarPrice)
+
+        val normalBike = PrizeCatalog.findById("honda_navi")!!
+        val h2r = PrizeCatalog.findById("kawasaki_ninja_h2r")!!
+        assertTrue(normalBike.price < h2r.price)
 
         assertEquals(0.0, UserProfile().ratingOutOfTen, 0.001)
         assertEquals(1.0, UserProfile(totalAttempted = 10, totalCorrect = 0).ratingOutOfTen, 0.001)
@@ -168,8 +210,90 @@ class VerbQuestionBankTest {
     }
 
     @Test
+    fun fixingExamTracksWrongQuestionsAndClearsFixedOnes() = runTest {
+        val store = FakeProgressStore()
+        val vm = VerbCraftViewModel(store, "user_1", "Alex")
+        val wrongCollectorJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.wrongQuestionIdsState.collect()
+        }
+        advanceUntilIdle()
+
+        vm.selectSuite(ExamSuite.VERBS_EXPRESSIONS)
+        vm.selectLength(ExamLength.TEN)
+        vm.startExam()
+        assertEquals(10, vm.uiState.value.examQuestions.size)
+
+        val expectedWrongIds = mutableSetOf<Int>()
+        while (vm.uiState.value.examPhase == ExamPhase.ACTIVE) {
+            val q = vm.uiState.value.currentQuestion!!
+            if (vm.uiState.value.currentIndex < 3) {
+                val wrongIdx = (q.correctIndex + 1) % 4
+                expectedWrongIds += q.id
+                vm.submitChoiceAnswer(wrongIdx)
+            } else {
+                vm.submitChoiceAnswer(q.correctIndex)
+            }
+            vm.advanceToNextQuestion()
+        }
+        advanceUntilIdle()
+
+        assertEquals(expectedWrongIds, vm.wrongQuestionIdsState.value.toSet())
+
+        // Start Fixing Exam: must load all 3 wrong questions in one session, question by question
+        vm.selectSuite(ExamSuite.FIXING)
+        vm.startExam()
+        advanceUntilIdle()
+
+        val fixingState = vm.uiState.value
+        assertEquals(ExamPhase.ACTIVE, fixingState.examPhase)
+        assertTrue(fixingState.isFixingExamSession)
+        assertEquals(3, fixingState.examQuestions.size)
+        assertEquals(expectedWrongIds, fixingState.examQuestions.map { it.id }.toSet())
+
+        // Fix first 2, still miss the 3rd
+        var remainingId = -1
+        while (vm.uiState.value.examPhase == ExamPhase.ACTIVE) {
+            val q = vm.uiState.value.currentQuestion!!
+            if (vm.uiState.value.currentIndex < 2) {
+                vm.submitChoiceAnswer(q.correctIndex)
+            } else {
+                remainingId = q.id
+                vm.submitChoiceAnswer((q.correctIndex + 1) % 4)
+            }
+            vm.advanceToNextQuestion()
+        }
+        advanceUntilIdle()
+
+        assertEquals(listOf(remainingId), vm.wrongQuestionIdsState.value)
+        wrongCollectorJob.cancel()
+    }
+
+    @Test
+    fun fastingModeTogglesPersistsAndResetsFoodCategorySelection() = runTest {
+        val store = FakeProgressStore()
+        val vm = VerbCraftViewModel(store, "user_1", "Alex")
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.fastingMode)
+        vm.selectPrizeCategory(PrizeCategory.FOOD)
+        assertEquals(PrizeCategory.FOOD, vm.uiState.value.selectedPrizeCategory)
+
+        vm.toggleFastingMode()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.fastingMode)
+        assertEquals(null, vm.uiState.value.selectedPrizeCategory)
+        assertTrue(store.profile.value?.fastingMode == true)
+
+        // New ViewModel restores saved fastingMode
+        val vmRestored = VerbCraftViewModel(store, "user_1", "Alex")
+        advanceUntilIdle()
+        assertTrue(vmRestored.uiState.value.fastingMode)
+    }
+
+    @Test
     fun viewModelChoiceRewriteCoinsProfileAndPrizeFlow() = runTest {
-        assertTrue(VerbCodexData.entries.size >= 85)
+        assertTrue(VerbCodexData.entries.size >= 95)
         val store = FakeProgressStore()
         val vm = VerbCraftViewModel(store, "user_1", "Alex")
         advanceUntilIdle()
@@ -179,17 +303,17 @@ class VerbQuestionBankTest {
         assertEquals("Samira", store.profile.value?.displayName)
         assertEquals("Grade 12", store.profile.value?.grade)
 
-        // Start a mixed 20-question exam (10 choice + 10 rewrite)
+        // Start a mixed 100-question exam (50 choice + 50 rewrite) -> 50*1 + 50*5 = 300 coins
         vm.selectSuite(ExamSuite.IF_MIXED)
         vm.selectCategory(ExamCategory.ALL)
-        vm.selectLength(ExamLength.TWENTY)
+        vm.selectLength(ExamLength.ALL)
         vm.startExam()
 
         var state = vm.uiState.value
         assertEquals(ExamPhase.ACTIVE, state.examPhase)
-        assertEquals(20, state.examQuestions.size)
-        assertEquals(10, state.examQuestions.count { it.format == QuestionFormat.CHOICE })
-        assertEquals(10, state.examQuestions.count { it.format == QuestionFormat.REWRITE })
+        assertEquals(100, state.examQuestions.size)
+        assertEquals(50, state.examQuestions.count { it.format == QuestionFormat.CHOICE })
+        assertEquals(50, state.examQuestions.count { it.format == QuestionFormat.REWRITE })
 
         while (vm.uiState.value.examPhase == ExamPhase.ACTIVE) {
             val q = vm.uiState.value.currentQuestion!!
@@ -206,18 +330,17 @@ class VerbQuestionBankTest {
 
         state = vm.uiState.value
         assertEquals(ExamPhase.RESULTS, state.examPhase)
-        assertEquals(20, state.sessionCorrectCount)
-        // 10 * 1 + 10 * 5 = 60 coins
-        assertEquals(60, state.sessionCoinsEarned)
-        assertEquals(60L, store.profile.value?.coins)
+        assertEquals(100, state.sessionCorrectCount)
+        assertEquals(300, state.sessionCoinsEarned)
+        assertEquals(300L, store.profile.value?.coins)
         assertEquals(10.0, store.profile.value!!.ratingOutOfTen, 0.001)
 
-        // Buy Porsche 911 GT3 (60 coins)
+        // Buy Porsche 911 GT3 (267 coins)
         val gt3 = PrizeCatalog.findById("porsche_911_gt3")!!
         vm.purchasePrize(gt3)
         advanceUntilIdle()
 
-        assertEquals(0L, store.profile.value?.coins)
+        assertEquals(33L, store.profile.value?.coins)
         assertEquals(1, store.collection.value.size)
         assertEquals("porsche_911_gt3", store.collection.value.first().prizeId)
     }

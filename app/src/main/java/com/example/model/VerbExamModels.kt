@@ -13,6 +13,11 @@ enum class ExamSuite(
     val subtitle: String,
     val badge: String,
 ) {
+    VERBS_EXPRESSIONS(
+        title = "Verbs & Expressions Gauntlet",
+        subtitle = "1,000 different & difficult questions on verbs and expressions with to + inf vs V + ing.",
+        badge = "1,000 Qs • +1🪙",
+    ),
     IF_MIXED(
         title = "If-Clauses Grand Gauntlet",
         subtitle = "2,000 C2 questions mixing 4-choice (+1 coin) & rewrites (+5 coins) across all conditions.",
@@ -32,6 +37,11 @@ enum class ExamSuite(
         title = "Verb Complement Mastery",
         subtitle = "50 stacked V+ing, to+inf, causative & meaning-shift questions (+1 coin each).",
         badge = "50 Qs • +1🪙",
+    ),
+    FIXING(
+        title = "Fixing Exam",
+        subtitle = "All questions you got wrong across exams in one session, question by question until mastered.",
+        badge = "Mistakes",
     ),
 }
 
@@ -74,6 +84,26 @@ enum class ExamCategory(
         title = "Special Conditions & Modals",
         shortTitle = "Unless / Even if / In case",
         description = "Unless, Provided that, Supposing, Even if, In case, Otherwise, Zero/1st/2nd/3rd nuances.",
+    ),
+    EXPRESSIONS_PREP_TO(
+        title = "Preposition 'to' Expressions",
+        shortTitle = "Prep 'to' Exprs",
+        description = "look forward to, object to, resort to, with a view to, committed to, get round to, accustomed to + V-ing.",
+    ),
+    FIXED_GERUND_EXPRESSIONS(
+        title = "Idiomatic + V-ing Expressions",
+        shortTitle = "Idioms + V-ing",
+        description = "it's no use, there's no point in, can't help, be worth, on the verge of, confess to having V3.",
+    ),
+    INFINITIVE_AND_PREFERENCE(
+        title = "Infinitive & Preference Traps",
+        shortTitle = "Inf & Preference",
+        description = "would prefer to V vs prefer V-ing, had better + bare V, be made to V, prevent from V-ing.",
+    ),
+    MEANING_AND_CAUSATIVE(
+        title = "Meaning Shifts & Aspect",
+        shortTitle = "Meaning & Aspect",
+        description = "regret (not) having V3 vs regret to V, mean V-ing vs mean to V, get used to V-ing vs used to V.",
     ),
 }
 
@@ -219,6 +249,7 @@ data class UserProfile(
     val totalCorrect: Long = 0L,
     val choiceCorrect: Long = 0L,
     val rewriteCorrect: Long = 0L,
+    val fastingMode: Boolean = false,
 ) {
     val accuracyPercent: Int
         get() = if (totalAttempted <= 0L) 0 else ((totalCorrect * 100.0) / totalAttempted).roundToInt().coerceIn(0, 100)

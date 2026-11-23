@@ -29,6 +29,18 @@ interface VerbCraftDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertCollectable(item: CollectableEntity)
 
+    @Query("SELECT questionId FROM wrong_questions ORDER BY updatedAt DESC")
+    fun observeWrongQuestionIds(): Flow<List<Int>>
+
+    @Query("SELECT * FROM wrong_questions WHERE questionId = :questionId LIMIT 1")
+    suspend fun getWrongQuestionById(questionId: Int): WrongQuestionEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertWrongQuestion(item: WrongQuestionEntity)
+
+    @Query("DELETE FROM wrong_questions WHERE questionId = :questionId")
+    suspend fun deleteWrongQuestionById(questionId: Int)
+
     @Transaction
     suspend fun ensureProfileExistsTx(defaultName: String) {
         if (getUserProfileOnce() == null) {
@@ -54,7 +66,13 @@ interface VerbCraftDao {
     }
 
     @Transaction
-    suspend fun recordAnswerTx(isCorrect: Boolean, isRewrite: Boolean) {
+    suspend fun setFastingModeTx(enabled: Boolean) {
+        val current = getUserProfileOnce() ?: UserProfileEntity(id = "local_user")
+        upsertUserProfile(current.copy(fastingMode = enabled))
+    }
+
+    @Transaction
+    suspend fun recordAnswerTx(questionId: Int, isCorrect: Boolean, isRewrite: Boolean) {
         val current = getUserProfileOnce() ?: UserProfileEntity(id = "local_user")
         val coinDelta = when {
             !isCorrect -> 0L
@@ -70,6 +88,19 @@ interface VerbCraftDao {
                 rewriteCorrect = current.rewriteCorrect + if (isCorrect && isRewrite) 1L else 0L,
             )
         )
+
+        if (isCorrect) {
+            deleteWrongQuestionById(questionId)
+        } else {
+            val existing = getWrongQuestionById(questionId)
+            upsertWrongQuestion(
+                WrongQuestionEntity(
+                    questionId = questionId,
+                    wrongCount = (existing?.wrongCount ?: 0) + 1,
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+        }
     }
 
     @Transaction
