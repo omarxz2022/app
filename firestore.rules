@@ -1,0 +1,158 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string &&
+             data.userId.size() >= 1 &&
+             data.userId.size() <= 128 &&
+             data.displayName is string &&
+             data.displayName.size() <= 60 &&
+             data.grade is string &&
+             data.grade.size() <= 30 &&
+             data.coins is int &&
+             data.coins >= 0 &&
+             data.totalAttempted is int &&
+             data.totalAttempted >= 0 &&
+             data.totalCorrect is int &&
+             data.totalCorrect >= 0 &&
+             data.totalCorrect <= data.totalAttempted &&
+             data.choiceCorrect is int &&
+             data.choiceCorrect >= 0 &&
+             data.rewriteCorrect is int &&
+             data.rewriteCorrect >= 0 &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidCollectable(data, userId, prizeId) {
+      return data.prizeId is string &&
+             data.prizeId == prizeId &&
+             data.prizeId.size() >= 1 &&
+             data.prizeId.size() <= 60 &&
+             data.userId is string &&
+             data.userId == userId &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 80 &&
+             data.category is string &&
+             data.category in ['CAR', 'MOTORBIKE', 'FOOD'] &&
+             data.price is int &&
+             data.price >= 1 &&
+             data.price <= 10000 &&
+             data.quantity is int &&
+             data.quantity >= 1 &&
+             data.quantity <= 999 &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'grade', 'coins',
+                         'totalAttempted', 'totalCorrect', 'choiceCorrect',
+                         'rewriteCorrect', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'grade', 'coins',
+                         'totalAttempted', 'totalCorrect', 'choiceCorrect',
+                         'rewriteCorrect', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         // Action 1: Update learner name & grade
+                         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'grade', 'updatedAt']) ||
+                         // Action 2: Record answered question & award 0, 1, or 5 coins
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'coins', 'totalAttempted', 'totalCorrect',
+                             'choiceCorrect', 'rewriteCorrect', 'updatedAt'
+                           ]) &&
+                           incoming().totalAttempted >= existing().totalAttempted &&
+                           incoming().totalCorrect >= existing().totalCorrect &&
+                           incoming().choiceCorrect >= existing().choiceCorrect &&
+                           incoming().rewriteCorrect >= existing().rewriteCorrect &&
+                           incoming().coins >= existing().coins &&
+                           (incoming().coins - existing().coins) <= 5
+                         ) ||
+                         // Action 3: Spend coins on Prize Menu purchase
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['coins', 'updatedAt']) &&
+                           incoming().coins < existing().coins
+                         )
+                       );
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /collection/{prizeId} {
+        allow get: if isOwner(userId) && isValidId(prizeId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(prizeId) &&
+                         incoming().keys().hasAll([
+                           'prizeId', 'userId', 'title', 'category',
+                           'price', 'quantity', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'prizeId', 'userId', 'title', 'category',
+                           'price', 'quantity', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidCollectable(incoming(), userId, prizeId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(prizeId) &&
+                         isValidCollectable(incoming(), userId, prizeId) &&
+                         incoming().prizeId == existing().prizeId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['quantity', 'updatedAt']) &&
+                         incoming().quantity == existing().quantity + 1;
+
+        allow delete: if isOwner(userId) && isValidId(prizeId);
+      }
+    }
+  }
+}

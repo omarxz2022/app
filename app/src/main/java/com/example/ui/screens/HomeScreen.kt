@@ -18,13 +18,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.AutoStories
-import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.MonetizationOn
 import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -33,6 +37,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -52,19 +57,30 @@ import com.example.R
 import com.example.data.VerbQuestionRepository
 import com.example.model.ExamCategory
 import com.example.model.ExamLength
+import com.example.model.ExamSuite
+import com.example.model.UserProfile
 import com.example.ui.theme.LocalSemanticColors
 import com.example.viewmodel.VerbCraftUiState
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
     uiState: VerbCraftUiState,
+    profile: UserProfile?,
+    onSelectSuite: (ExamSuite) -> Unit,
     onSelectCategory: (ExamCategory) -> Unit,
     onSelectLength: (ExamLength) -> Unit,
     onStartExam: () -> Unit,
+    onOpenCodex: () -> Unit,
+    onOpenRating: () -> Unit,
+    onOpenPrizes: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val semantic = LocalSemanticColors.current
-    val availableCount = VerbQuestionRepository.countForCategory(uiState.selectedCategory)
+    val availableCount = VerbQuestionRepository.countForSuite(
+        suite = uiState.selectedSuite,
+        category = uiState.selectedCategory,
+    )
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -73,10 +89,105 @@ fun HomeScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 640.dp),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                .widthIn(max = 680.dp),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // Top Status Strip: Coins, Rating, and Verb Codex
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        color = semantic.brassContainer,
+                        shape = RoundedCornerShape(999.dp),
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .clip(RoundedCornerShape(999.dp))
+                            .clickable(onClick = onOpenPrizes)
+                            .testTag("home_coins_pill"),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.MonetizationOn,
+                                contentDescription = "Coins balance",
+                                tint = semantic.brass,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                text = "${profile?.coins ?: 0} Coins",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = semantic.onBrassContainer,
+                            )
+                        }
+                    }
+
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(999.dp),
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .clip(RoundedCornerShape(999.dp))
+                            .clickable(onClick = onOpenRating)
+                            .testTag("home_rating_pill"),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Star,
+                                contentDescription = "My rating out of 10",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            val ratingText = if ((profile?.totalAttempted ?: 0L) > 0L) {
+                                String.format(Locale.US, "%.1f/10", profile?.ratingOutOfTen ?: 0.0)
+                            } else {
+                                "Unrated"
+                            }
+                            Text(
+                                text = ratingText,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    OutlinedButton(
+                        onClick = onOpenCodex,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(999.dp),
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("open_codex_button"),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.MenuBook,
+                            contentDescription = "Open Verb Codex",
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = "Codex",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                }
+            }
+
+            // Editorial Hero Banner
             item {
                 Card(
                     shape = MaterialTheme.shapes.large,
@@ -86,7 +197,7 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp),
+                            .height(176.dp),
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.img_oxford_banner_1795177415811),
@@ -99,17 +210,14 @@ fun HomeScreen(
                                 .fillMaxSize()
                                 .background(
                                     Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color(0x660E1A2B),
-                                            Color(0xEA102036),
-                                        ),
+                                        colors = listOf(Color(0x550E1A2B), Color(0xEA102036)),
                                     ),
                                 ),
                         )
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(20.dp),
+                                .padding(18.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Surface(
@@ -117,7 +225,7 @@ fun HomeScreen(
                                 shape = RoundedCornerShape(999.dp),
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
@@ -125,25 +233,24 @@ fun HomeScreen(
                                         imageVector = Icons.Outlined.School,
                                         contentDescription = null,
                                         tint = Color(0xFFFBE0AD),
-                                        modifier = Modifier.size(16.dp),
+                                        modifier = Modifier.size(15.dp),
                                     )
                                     Text(
-                                        text = "C2 GRAMMAR GAUNTLET",
+                                        text = "C2 GRAMMAR & REWARDS STUDIO",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color(0xFFFBE0AD),
                                     )
                                 }
                             }
-
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     text = stringResource(R.string.app_name),
-                                    style = MaterialTheme.typography.displaySmall,
+                                    style = MaterialTheme.typography.headlineLarge,
                                     color = Color.White,
                                 )
                                 Text(
                                     text = stringResource(R.string.hero_subtitle),
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFFE2E8F0),
                                 )
                             }
@@ -152,59 +259,21 @@ fun HomeScreen(
                 }
             }
 
-            if (uiState.totalAnsweredLifetime > 0) {
-                item {
-                    val accuracy = (uiState.totalCorrectLifetime * 100) / uiState.totalAnsweredLifetime
-                    Surface(
-                        color = semantic.brassContainer,
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Bolt,
-                                    contentDescription = null,
-                                    tint = semantic.brass,
-                                )
-                                Text(
-                                    text = "Session Accuracy: $accuracy%",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = semantic.onBrassContainer,
-                                )
-                            }
-                            Text(
-                                text = "${uiState.totalCorrectLifetime}/${uiState.totalAnsweredLifetime} correct",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = semantic.onBrassContainer,
-                            )
-                        }
-                    }
-                }
-            }
-
+            // Suite Picker
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Exam Focus Track",
+                        text = "Choose Exam Arena",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
-                    ExamCategory.entries.forEach { category ->
-                        val isSelected = uiState.selectedCategory == category
-                        val count = VerbQuestionRepository.countForCategory(category)
+                    ExamSuite.entries.forEach { suite ->
+                        val isSelected = uiState.selectedSuite == suite
                         Card(
                             shape = MaterialTheme.shapes.medium,
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isSelected) {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f)
                                 } else {
                                     MaterialTheme.colorScheme.surface
                                 },
@@ -221,8 +290,8 @@ fun HomeScreen(
                                 .fillMaxWidth()
                                 .minimumInteractiveComponentSize()
                                 .clip(MaterialTheme.shapes.medium)
-                                .clickable { onSelectCategory(category) }
-                                .testTag("category_card_${category.name.lowercase()}"),
+                                .clickable { onSelectSuite(suite) }
+                                .testTag("suite_card_${suite.name.lowercase()}"),
                         ) {
                             Row(
                                 modifier = Modifier
@@ -240,34 +309,34 @@ fun HomeScreen(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     ) {
                                         Text(
-                                            text = category.title,
+                                            text = suite.title,
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface,
                                         )
                                         Surface(
-                                            color = MaterialTheme.colorScheme.surfaceVariant,
+                                            color = semantic.brassContainer,
                                             shape = RoundedCornerShape(6.dp),
                                         ) {
                                             Text(
-                                                text = "$count Qs",
+                                                text = suite.badge,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                color = semantic.onBrassContainer,
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
                                             )
                                         }
                                     }
                                     Text(
-                                        text = category.description,
+                                        text = suite.subtitle,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                                 if (isSelected) {
-                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Spacer(modifier = Modifier.width(10.dp))
                                     Icon(
                                         imageVector = Icons.Filled.CheckCircle,
-                                        contentDescription = "Selected track",
+                                        contentDescription = "Selected exam arena",
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(22.dp),
                                     )
@@ -278,32 +347,67 @@ fun HomeScreen(
                 }
             }
 
+            // Category Filter Chips within Suite
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Questions Per Exam",
+                        text = "Topic Focus",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth(),
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        ExamLength.entries.forEach { length ->
+                        items(uiState.availableCategories) { category ->
+                            val isSelected = uiState.selectedCategory == category
+                            val catCount = VerbQuestionRepository.countForSuite(uiState.selectedSuite, category)
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { onSelectCategory(category) },
+                                label = {
+                                    Text(
+                                        text = "${category.shortTitle} ($catCount)",
+                                        style = MaterialTheme.typography.labelLarge,
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
+                                modifier = Modifier
+                                    .minimumInteractiveComponentSize()
+                                    .testTag("category_chip_${category.name.lowercase()}"),
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Exam Length
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Questions Per Session",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(ExamLength.entries) { length ->
                             val isSelected = uiState.selectedLength == length
-                            val label = if (length == ExamLength.ALL) {
-                                "All $availableCount Qs"
+                            val sessionCount = if (length == ExamLength.ALL) {
+                                minOf(100, availableCount)
                             } else {
-                                "${minOf(length.count, availableCount)} Qs"
+                                minOf(length.count, availableCount)
                             }
-                            val enabled = length != ExamLength.TWENTY || availableCount >= 12
-                            if (enabled) {
+                            if (length != ExamLength.TWENTY || availableCount >= 12) {
                                 FilterChip(
                                     selected = isSelected,
                                     onClick = { onSelectLength(length) },
                                     label = {
                                         Text(
-                                            text = label,
+                                            text = "$sessionCount Qs",
                                             style = MaterialTheme.typography.labelLarge,
                                         )
                                     },
@@ -321,6 +425,7 @@ fun HomeScreen(
                 }
             }
 
+            // Start CTA
             item {
                 Button(
                     onClick = onStartExam,
@@ -351,7 +456,7 @@ fun HomeScreen(
                         modifier = Modifier.size(20.dp),
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
             }
         }
     }

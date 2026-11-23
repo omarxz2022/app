@@ -1,18 +1,23 @@
 <resources>
     <string name="app_name">VerbCraft</string>
     <string name="nav_exam">Exam</string>
+    <string name="nav_rating">My Rating</string>
+    <string name="nav_prizes">Prizes</string>
+    <string name="nav_collection">Collection</string>
     <string name="nav_codex">Verb Codex</string>
-    <string name="hero_subtitle">Master C2-level verb patterns, stacked clauses, causatives, and meaning shifts.</string>
+    <string name="hero_subtitle">2,050 C2 grammar challenges: stacked verb complements, all if-clauses, mixed inversions, and rewrites.</string>
     <string name="start_exam">Start Exam</string>
     <string name="next_question">Next Question</string>
     <string name="finish_exam">Finish Exam</string>
+    <string name="submit_rewrite">Check Rewrite (+5 Coins)</string>
     <string name="exit_exam_title">Leave current exam?</string>
-    <string name="exit_exam_message">Your progress in this exam session will be lost.</string>
+    <string name="exit_exam_message">Your answered questions and coins from this session are saved, but unfinished questions will be canceled.</string>
     <string name="stay">Stay</string>
     <string name="leave">Leave</string>
     <string name="correct_label">Exact Match</string>
-    <string name="incorrect_label">Incorrect Choice</string>
+    <string name="incorrect_label">Incorrect Answer</string>
     <string name="right_answer_label">Right Answer</string>
+    <string name="model_rewrite_label">Model Rewrite</string>
     <string name="reason_label">Why It Is Right</string>
     <string name="meaning_label">Sentence Meaning in English</string>
     <string name="retry_missed">Retry Missed Questions</string>

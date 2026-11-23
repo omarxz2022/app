@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated learner profile storing display name, grade, coin balance, and cumulative exam statistics for 1-10 rating.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the profile owner."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Learner's chosen name shown in My Rating."
+        },
+        "grade": {
+          "type": "string",
+          "description": "Learner's school grade or English level."
+        },
+        "coins": {
+          "type": "integer",
+          "description": "Current coin balance earned from correct answers (+1 choice, +5 rewrite)."
+        },
+        "totalAttempted": {
+          "type": "integer",
+          "description": "Total questions attempted across all sessions."
+        },
+        "totalCorrect": {
+          "type": "integer",
+          "description": "Total questions answered correctly across all sessions."
+        },
+        "choiceCorrect": {
+          "type": "integer",
+          "description": "Total 4-choice questions answered correctly."
+        },
+        "rewriteCorrect": {
+          "type": "integer",
+          "description": "Total rewrite questions answered correctly."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "grade",
+        "coins",
+        "totalAttempted",
+        "totalCorrect",
+        "choiceCorrect",
+        "rewriteCorrect",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CollectableItem": {
+      "title": "CollectableItem",
+      "description": "A prize item (car, motorbike, or food) purchased by the learner from the Prize Menu.",
+      "type": "object",
+      "properties": {
+        "prizeId": {
+          "type": "string",
+          "description": "Catalog identifier matching the document ID."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Display name of the collectable prize."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["CAR", "MOTORBIKE", "FOOD"],
+          "description": "Prize category."
+        },
+        "price": {
+          "type": "integer",
+          "description": "Coin cost per unit."
+        },
+        "quantity": {
+          "type": "integer",
+          "description": "Number of units owned in the learner's collection."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "prizeId",
+        "userId",
+        "title",
+        "category",
+        "price",
+        "quantity",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Per-user profile, rating stats, and coin wallet."
+    },
+    "/users/{userId}/collection/{prizeId}": {
+      "schema": {
+        "$ref": "#/entities/CollectableItem"
+      },
+      "description": "Per-user purchased collectables from the Prize Menu."
+    }
+  }
+}

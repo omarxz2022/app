@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,9 +33,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.MonetizationOn
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -48,6 +50,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -66,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.example.R
+import com.example.model.QuestionFormat
 import com.example.model.VerbQuestion
 import com.example.ui.theme.LocalSemanticColors
 import com.example.viewmodel.VerbCraftUiState
@@ -75,6 +79,8 @@ import com.example.viewmodel.VerbCraftUiState
 fun ExamScreen(
     uiState: VerbCraftUiState,
     onSelectOption: (Int) -> Unit,
+    onUpdateRewriteInput: (String) -> Unit,
+    onSubmitRewrite: () -> Unit,
     onNextQuestion: () -> Unit,
     onRequestExit: () -> Unit,
     onDismissExit: () -> Unit,
@@ -134,7 +140,7 @@ fun ExamScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = 640.dp)
+                .widthIn(max = 680.dp)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -164,7 +170,7 @@ fun ExamScreen(
                         text = "Q ${uiState.currentIndex + 1} / $totalCount",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
 
@@ -178,15 +184,15 @@ fun ExamScreen(
                             shape = RoundedCornerShape(999.dp),
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(3.dp),
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.LocalFireDepartment,
                                     contentDescription = "Current streak",
                                     tint = semantic.brass,
-                                    modifier = Modifier.size(15.dp),
+                                    modifier = Modifier.size(14.dp),
                                 )
                                 Text(
                                     text = "${uiState.currentStreak}",
@@ -196,16 +202,29 @@ fun ExamScreen(
                             }
                         }
                     }
+
                     Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = semantic.brassContainer,
                         shape = RoundedCornerShape(999.dp),
                     ) {
-                        Text(
-                            text = "${uiState.sessionCorrectCount} pts",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        )
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.MonetizationOn,
+                                contentDescription = "Session coins",
+                                tint = semantic.brass,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Text(
+                                text = "+${uiState.sessionCoinsEarned}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = semantic.onBrassContainer,
+                            )
+                        }
                     }
                 }
             }
@@ -221,21 +240,37 @@ fun ExamScreen(
             )
         }
 
-        // Scrollable single-question body
+        // Question Body
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .widthIn(max = 640.dp)
+                .widthIn(max = 680.dp)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Category & tested verbs
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                Surface(
+                    color = semantic.brassContainer,
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text(
+                        text = if (question.format == QuestionFormat.REWRITE) {
+                            "REWRITE • +5 COINS"
+                        } else {
+                            "4-CHOICE • +1 COIN"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = semantic.onBrassContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                }
+
                 Surface(
                     color = MaterialTheme.colorScheme.tertiaryContainer,
                     shape = RoundedCornerShape(8.dp),
@@ -247,13 +282,14 @@ fun ExamScreen(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     )
                 }
-                question.verbsInvolved.forEach { verb ->
+
+                question.verbsInvolved.forEach { tag ->
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(8.dp),
                     ) {
                         Text(
-                            text = verb,
+                            text = tag,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -262,7 +298,7 @@ fun ExamScreen(
                 }
             }
 
-            // Editorial Sentence Card
+            // Question Prompt / Editorial Card
             Card(
                 shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -270,128 +306,146 @@ fun ExamScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    StyledExamSentence(
-                        question = question,
-                        isAnswered = uiState.isCurrentAnswered,
-                    )
-                }
-            }
-
-            // 4 Choice Cards
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                val letters = listOf("A", "B", "C", "D")
-                question.options.forEachIndexed { index, optionText ->
-                    val isSelected = uiState.selectedOptionIndex == index
-                    val isCorrectOption = index == question.correctIndex
-                    val showResults = uiState.isCurrentAnswered
-
-                    val containerColor = when {
-                        !showResults -> MaterialTheme.colorScheme.surface
-                        isCorrectOption -> semantic.correctContainer
-                        isSelected -> semantic.wrongContainer
-                        else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
-                    }
-                    val borderColor = when {
-                        !showResults -> MaterialTheme.colorScheme.outlineVariant
-                        isCorrectOption -> semantic.correct
-                        isSelected -> semantic.wrong
-                        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    }
-                    val badgeBg = when {
-                        !showResults -> MaterialTheme.colorScheme.surfaceVariant
-                        isCorrectOption -> semantic.correct
-                        isSelected -> semantic.wrong
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    }
-                    val badgeTextColor = when {
-                        !showResults -> MaterialTheme.colorScheme.onSurfaceVariant
-                        isCorrectOption -> semantic.onCorrect
-                        isSelected -> semantic.onWrong
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-
-                    Card(
-                        shape = MaterialTheme.shapes.medium,
-                        colors = CardDefaults.cardColors(containerColor = containerColor),
-                        border = BorderStroke(if (showResults && (isCorrectOption || isSelected)) 2.dp else 1.dp, borderColor),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .minimumInteractiveComponentSize()
-                            .clip(MaterialTheme.shapes.medium)
-                            .clickable(enabled = !showResults) { onSelectOption(index) }
-                            .testTag("option_card_$index"),
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (question.format == QuestionFormat.CHOICE) {
+                        StyledExamSentence(
+                            question = question,
+                            isAnswered = uiState.isCurrentAnswered,
+                        )
+                    } else {
+                        Text(
+                            text = "ORIGINAL SENTENCE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = question.sentenceWithBlank,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f),
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = badgeBg,
-                                modifier = Modifier.size(32.dp),
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.Top,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = letters[index],
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = badgeTextColor,
-                                    )
-                                }
-                            }
-
-                            Text(
-                                text = optionText,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (showResults && isCorrectOption) FontWeight.SemiBold else FontWeight.Medium,
-                                color = when {
-                                    !showResults -> MaterialTheme.colorScheme.onSurface
-                                    isCorrectOption -> semantic.onCorrectContainer
-                                    isSelected -> semantic.onWrongContainer
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-
-                            if (showResults) {
-                                if (isCorrectOption) {
-                                    Icon(
-                                        imageVector = Icons.Filled.CheckCircle,
-                                        contentDescription = "Right answer",
-                                        tint = semantic.correct,
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                } else if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Cancel,
-                                        contentDescription = "Incorrect choice",
-                                        tint = semantic.wrong,
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Outlined.EditNote,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Text(
+                                    text = question.rewritePrompt,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
                             }
                         }
                     }
                 }
             }
 
-            // Diagnostic Feedback Card (shows right answer, reason, and English meaning)
+            // Input Area: 4-Choice vs Sentence Rewrite
+            if (question.format == QuestionFormat.CHOICE) {
+                ChoiceOptionsList(
+                    question = question,
+                    selectedOptionIndex = uiState.selectedOptionIndex,
+                    isAnswered = uiState.isCurrentAnswered,
+                    onSelectOption = onSelectOption,
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (question.rewriteStarterHint.isNotBlank()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Text(
+                                text = "Starter guide: ${question.rewriteStarterHint}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = uiState.rewriteInput,
+                        onValueChange = onUpdateRewriteInput,
+                        enabled = !uiState.isCurrentAnswered,
+                        label = { Text("Your rewritten sentence") },
+                        placeholder = { Text(question.rewriteStarterHint.ifBlank { "Type the complete rewritten sentence…" }) },
+                        trailingIcon = {
+                            if (!uiState.isCurrentAnswered && uiState.rewriteInput.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { onUpdateRewriteInput("") },
+                                    modifier = Modifier.minimumInteractiveComponentSize(),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Clear,
+                                        contentDescription = "Clear rewrite",
+                                    )
+                                }
+                            }
+                        },
+                        minLines = 3,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("rewrite_input"),
+                    )
+
+                    if (!uiState.isCurrentAnswered) {
+                        Button(
+                            onClick = onSubmitRewrite,
+                            enabled = uiState.rewriteInput.isNotBlank(),
+                            shape = MaterialTheme.shapes.medium,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiary,
+                                contentColor = MaterialTheme.colorScheme.onTertiary,
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp)
+                                .testTag("submit_rewrite_button"),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.MonetizationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.submit_rewrite),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Diagnostic Feedback Card (Right Answer/Model Rewrite, Reason & English Meaning)
             AnimatedVisibility(
                 visible = uiState.isCurrentAnswered,
                 enter = fadeIn() + expandVertically(
                     animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
                 ),
             ) {
-                val selectedIdx = uiState.selectedOptionIndex ?: 0
-                val isUserCorrect = selectedIdx == question.correctIndex
+                val isUserCorrect = uiState.answeredQuestions.lastOrNull()?.isCorrect == true
 
                 DiagnosticFeedbackCard(
                     question = question,
                     isUserCorrect = isUserCorrect,
+                    coinReward = if (isUserCorrect) question.coinReward else 0,
                 )
             }
 
@@ -421,7 +475,7 @@ fun ExamScreen(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .widthIn(max = 640.dp)
+                            .widthIn(max = 680.dp)
                             .height(52.dp)
                             .testTag("next_question_button"),
                     ) {
@@ -439,6 +493,115 @@ fun ExamScreen(
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoiceOptionsList(
+    question: VerbQuestion,
+    selectedOptionIndex: Int?,
+    isAnswered: Boolean,
+    onSelectOption: (Int) -> Unit,
+) {
+    val semantic = LocalSemanticColors.current
+    val letters = listOf("A", "B", "C", "D")
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        question.options.forEachIndexed { index, optionText ->
+            val isSelected = selectedOptionIndex == index
+            val isCorrectOption = index == question.correctIndex
+
+            val containerColor = when {
+                !isAnswered -> MaterialTheme.colorScheme.surface
+                isCorrectOption -> semantic.correctContainer
+                isSelected -> semantic.wrongContainer
+                else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
+            }
+            val borderColor = when {
+                !isAnswered -> MaterialTheme.colorScheme.outlineVariant
+                isCorrectOption -> semantic.correct
+                isSelected -> semantic.wrong
+                else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            }
+            val badgeBg = when {
+                !isAnswered -> MaterialTheme.colorScheme.surfaceVariant
+                isCorrectOption -> semantic.correct
+                isSelected -> semantic.wrong
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            }
+            val badgeTextColor = when {
+                !isAnswered -> MaterialTheme.colorScheme.onSurfaceVariant
+                isCorrectOption -> semantic.onCorrect
+                isSelected -> semantic.onWrong
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            }
+
+            Card(
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(containerColor = containerColor),
+                border = BorderStroke(if (isAnswered && (isCorrectOption || isSelected)) 2.dp else 1.dp, borderColor),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .minimumInteractiveComponentSize()
+                    .clip(MaterialTheme.shapes.medium)
+                    .clickable(enabled = !isAnswered) { onSelectOption(index) }
+                    .testTag("option_card_$index"),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = badgeBg,
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = letters.getOrElse(index) { "" },
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = badgeTextColor,
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = optionText,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (isAnswered && isCorrectOption) FontWeight.SemiBold else FontWeight.Medium,
+                        color = when {
+                            !isAnswered -> MaterialTheme.colorScheme.onSurface
+                            isCorrectOption -> semantic.onCorrectContainer
+                            isSelected -> semantic.onWrongContainer
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+
+                    if (isAnswered) {
+                        if (isCorrectOption) {
+                            Icon(
+                                imageVector = Icons.Filled.CheckCircle,
+                                contentDescription = "Right answer",
+                                tint = semantic.correct,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        } else if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Filled.Cancel,
+                                contentDescription = "Incorrect choice",
+                                tint = semantic.wrong,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -481,7 +644,6 @@ private fun StyledExamSentence(
             color = MaterialTheme.colorScheme.onSurface,
         )
     } else {
-        // Highlight filled correct segments inside the completed sentence
         val tokens = question.correctOption.split(" / ").map { it.trim() }
         val templateParts = question.sentenceWithBlank.split("________")
         val annotated = buildAnnotatedString {
@@ -512,6 +674,7 @@ private fun StyledExamSentence(
 fun DiagnosticFeedbackCard(
     question: VerbQuestion,
     isUserCorrect: Boolean,
+    coinReward: Int,
     modifier: Modifier = Modifier,
 ) {
     val semantic = LocalSemanticColors.current
@@ -531,30 +694,50 @@ fun DiagnosticFeedbackCard(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // Header badge
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(
-                    imageVector = if (isUserCorrect) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
-                    contentDescription = null,
-                    tint = if (isUserCorrect) semantic.correct else semantic.wrong,
-                    modifier = Modifier.size(22.dp),
-                )
-                Text(
-                    text = if (isUserCorrect) {
-                        stringResource(R.string.correct_label)
-                    } else {
-                        stringResource(R.string.incorrect_label)
-                    },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isUserCorrect) semantic.correct else semantic.wrong,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = if (isUserCorrect) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
+                        contentDescription = null,
+                        tint = if (isUserCorrect) semantic.correct else semantic.wrong,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Text(
+                        text = if (isUserCorrect) {
+                            stringResource(R.string.correct_label)
+                        } else {
+                            stringResource(R.string.incorrect_label)
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isUserCorrect) semantic.correct else semantic.wrong,
+                    )
+                }
+
+                if (coinReward > 0) {
+                    Surface(
+                        color = semantic.brassContainer,
+                        shape = RoundedCornerShape(999.dp),
+                    ) {
+                        Text(
+                            text = "+$coinReward Coin${if (coinReward > 1) "s" else ""}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = semantic.onBrassContainer,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                }
             }
 
-            if (!isUserCorrect) {
+            if (!isUserCorrect || question.format == QuestionFormat.REWRITE) {
                 Surface(
                     color = semantic.correctContainer,
                     shape = MaterialTheme.shapes.small,
@@ -565,7 +748,11 @@ fun DiagnosticFeedbackCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            text = stringResource(R.string.right_answer_label).uppercase(),
+                            text = if (question.format == QuestionFormat.REWRITE) {
+                                stringResource(R.string.model_rewrite_label).uppercase()
+                            } else {
+                                stringResource(R.string.right_answer_label).uppercase()
+                            },
                             style = MaterialTheme.typography.labelSmall,
                             color = semantic.onCorrectContainer,
                         )
@@ -581,7 +768,6 @@ fun DiagnosticFeedbackCard(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // Reason section
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -606,7 +792,6 @@ fun DiagnosticFeedbackCard(
                 )
             }
 
-            // English Meaning section
             Surface(
                 color = semantic.brassContainer.copy(alpha = 0.65f),
                 shape = MaterialTheme.shapes.medium,

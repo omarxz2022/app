@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.MonetizationOn
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material3.Button
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.model.AnsweredQuestion
+import com.example.model.QuestionFormat
 import com.example.ui.theme.LocalSemanticColors
 import com.example.viewmodel.VerbCraftUiState
 
@@ -82,7 +84,7 @@ fun ResultsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 640.dp),
+                .widthIn(max = 680.dp),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -122,8 +124,32 @@ fun ResultsScreen(
                         Text(
                             text = "$correct out of $total correct • Best streak: ${uiState.bestStreakInSession}",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.88f),
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                         )
+
+                        Surface(
+                            color = semantic.brassContainer,
+                            shape = RoundedCornerShape(999.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.MonetizationOn,
+                                    contentDescription = null,
+                                    tint = semantic.brass,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text(
+                                    text = "+${uiState.sessionCoinsEarned} Coins Earned This Exam",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = semantic.onBrassContainer,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -215,7 +241,7 @@ fun ResultsScreen(
                                 color = semantic.onCorrectContainer,
                             )
                             Text(
-                                text = "Zero missed questions in this gauntlet. Try another track or tackle the full 50-question exam.",
+                                text = "Zero missed questions in this gauntlet. Spend your new coins in the Prize Menu!",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = semantic.onCorrectContainer,
                             )
@@ -247,13 +273,13 @@ private fun MissedQuestionReviewCard(item: AnsweredQuestion) {
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                q.verbsInvolved.forEach { verb ->
+                q.verbsInvolved.forEach { tag ->
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(6.dp),
                     ) {
                         Text(
-                            text = verb,
+                            text = tag,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -263,7 +289,11 @@ private fun MissedQuestionReviewCard(item: AnsweredQuestion) {
             }
 
             Text(
-                text = q.filledSentence(q.correctOption),
+                text = if (q.format == QuestionFormat.REWRITE) {
+                    "${q.sentenceWithBlank}\n(${q.rewritePrompt})"
+                } else {
+                    q.filledSentence(q.correctOption)
+                },
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -274,7 +304,11 @@ private fun MissedQuestionReviewCard(item: AnsweredQuestion) {
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "Your pick: ${q.options[item.selectedIndex]}",
+                    text = if (q.format == QuestionFormat.REWRITE) {
+                        "Your rewrite: ${item.userAnswerDisplay}"
+                    } else {
+                        "Your pick: ${item.userAnswerDisplay}"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = semantic.onWrongContainer,
                     modifier = Modifier.padding(10.dp),
