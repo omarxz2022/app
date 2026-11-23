@@ -1,7 +1,6 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,10 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,6 +52,7 @@ import com.example.model.CollectableItem
 import com.example.model.PrizeCategory
 import com.example.model.PrizeItem
 import com.example.model.UserProfile
+import com.example.ui.components.CollectableArtwork
 import com.example.ui.theme.LocalSemanticColors
 import com.example.viewmodel.DataState
 import com.example.viewmodel.VerbCraftUiState
@@ -381,13 +378,9 @@ private fun PrizeStoreCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Image(
-                painter = painterResource(id = prize.imageRes),
-                contentDescription = "${prize.title} picture",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(86.dp)
-                    .clip(RoundedCornerShape(14.dp)),
+            CollectableArtwork(
+                prize = prize,
+                modifier = Modifier.size(86.dp),
             )
 
             Column(

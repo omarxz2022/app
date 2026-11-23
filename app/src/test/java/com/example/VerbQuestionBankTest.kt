@@ -13,6 +13,7 @@ import com.example.model.PrizeCategory
 import com.example.model.PrizeItem
 import com.example.model.QuestionFormat
 import com.example.model.UserProfile
+import com.example.ui.art.PrizeArtRegistry
 import com.example.viewmodel.VerbCraftViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -207,6 +208,30 @@ class VerbQuestionBankTest {
         assertEquals(1.0, UserProfile(totalAttempted = 10, totalCorrect = 0).ratingOutOfTen, 0.001)
         assertEquals(5.5, UserProfile(totalAttempted = 10, totalCorrect = 5).ratingOutOfTen, 0.001)
         assertEquals(10.0, UserProfile(totalAttempted = 10, totalCorrect = 10).ratingOutOfTen, 0.001)
+    }
+
+    @Test
+    fun everyCollectableHasExplicitUniqueArtworkSpec() {
+        val items = PrizeCatalog.items
+        assertEquals(312, PrizeArtRegistry.allSpecs.size)
+        items.forEach { prize ->
+            assertTrue(
+                "Missing explicit artwork spec for ${prize.id}",
+                PrizeArtRegistry.allSpecs.containsKey(prize.id),
+            )
+        }
+        val uniqueVisualSignatures = items.map { prize ->
+            val spec = PrizeArtRegistry.specFor(prize)
+            listOf(
+                spec.shape,
+                spec.primary,
+                spec.secondary,
+                spec.accent,
+                spec.pattern,
+                spec.badge,
+            )
+        }.toSet()
+        assertEquals(312, uniqueVisualSignatures.size)
     }
 
     @Test

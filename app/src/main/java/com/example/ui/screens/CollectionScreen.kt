@@ -1,7 +1,6 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,10 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,6 +41,7 @@ import com.example.R
 import com.example.data.PrizeCatalog
 import com.example.model.CollectableItem
 import com.example.model.PrizeCategory
+import com.example.ui.components.CollectableArtwork
 import com.example.ui.theme.LocalSemanticColors
 import com.example.viewmodel.DataState
 
@@ -285,16 +282,12 @@ fun CollectionScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                                 ) {
-                                    if (catalogItem != null) {
-                                        Image(
-                                            painter = painterResource(id = catalogItem.imageRes),
-                                            contentDescription = "${collectable.title} collectable image",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .size(78.dp)
-                                                .clip(RoundedCornerShape(14.dp)),
-                                        )
-                                    }
+                                    CollectableArtwork(
+                                        prizeId = collectable.prizeId,
+                                        category = collectable.categoryEnum,
+                                        contentDescription = "${collectable.title} collectable icon",
+                                        modifier = Modifier.size(78.dp),
+                                    )
                                     Column(
                                         modifier = Modifier.weight(1f),
                                         verticalArrangement = Arrangement.spacedBy(4.dp),
